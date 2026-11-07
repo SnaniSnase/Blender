@@ -540,6 +540,12 @@ body.focus #toasts{top:auto;bottom:150px}
 .cur-w input{flex:1;accent-color:#3d7bff;height:30px}
 .cur-w output{min-width:96px;font:700 21px Inter,sans-serif;color:#1f2533;text-align:right;font-variant-numeric:tabular-nums}
 body.focus .lesson.on.fx>.demo.fshow{display:block!important}
+/* ===== v11 : vidéos des étapes ===== */
+.svbtn{display:inline-flex;align-items:center;gap:6px;margin:10px 10px 0 0;background:rgba(61,123,255,.12);border:1px solid #33427a;color:#dfe6ff;border-radius:10px;padding:7px 13px;font:600 14px Inter,sans-serif;cursor:pointer;min-height:40px}
+.svbtn:hover,.svbtn:focus-visible{border-color:#7fb0ff;outline:none;box-shadow:0 0 0 3px rgba(127,176,255,.35)}
+.svid{margin:12px 0 4px;border-radius:12px;overflow:hidden;border:1px solid #2a3560;background:#000;aspect-ratio:16/9;max-width:860px}
+.svid video{width:100%;height:100%;display:block;object-fit:contain;background:#000}
+@media (pointer:coarse){.svbtn{min-height:44px}}
 /* ===== v10 : retours des 20 agents ===== */
 body.focus main{width:100%}
 .ssay{position:absolute;top:13px;right:96px;width:36px;height:32px;display:grid;place-items:center;background:transparent;border:1px solid #33427a;color:#c6d0f0;border-radius:10px;font-size:15px;cursor:pointer;padding:0}
@@ -3207,6 +3213,18 @@ function renderPanel(){
 }
 
 /* =================== LECTURE À VOIX HAUTE =================== */
+const VIDS=new Set(["l-gestes-01", "l-gestes-02", "l-gestes-03", "l-gestes-04", "l-gestes-05", "l-gestes-06", "l-gestes-07", "l-gestes-08", "l-gestes-09", "l-gestes-10", "l-gestes-11", "l-gestes-12", "l-gestes-13", "l-gestes-14", "l-gestes-15", "l-gestes-16", "l-gestes-17", "l-gestes-18", "l-gestes-19", "l-gestes-20", "l-gestes-21", "l-gestes-22", "l-gestes-23"]);
+const VBASE=/github\.io$/.test(location.hostname)||location.hostname==="localhost"?"videos/":"https://snanisnase.github.io/Blender/videos/";
+function vidId(li){const sec=li&&li.closest(".lesson");if(!sec)return null;const k=lessonLis(sec).indexOf(li);return k<0?null:sec.id+"-"+String(k+1).padStart(2,"0");}
+function vidBtn(li){const id=vidId(li);if(!id||!VIDS.has(id)||li.querySelector(".svbtn"))return;const b=document.createElement("button");b.type="button";b.className="svbtn";b.textContent="🎬 Voir en vidéo";b.addEventListener("click",e=>{e.stopPropagation();vidToggle(li,undefined,false);});li.appendChild(b);}
+function vidToggle(li,show,auto){let w=li.querySelector(".svid");const b=li.querySelector(".svbtn");if(show===undefined)show=!w;
+  if(!show){if(w){const v=w.querySelector("video");try{v.pause();}catch(_){}w.remove();}if(b)b.textContent="🎬 Voir en vidéo";return;}
+  if(!w){const id=vidId(li);w=document.createElement("div");w.className="svid";
+    w.innerHTML=`<video src="${VBASE+id}.mp4" poster="${VBASE+id}.jpg" muted loop playsinline controls preload="metadata" aria-label="Vidéo de l'étape, sans son"></video>`;
+    const det=li.querySelector(".det")||li.querySelector(".lead");if(det)det.after(w);else li.appendChild(w);}
+  const v=w.querySelector("video");v.muted=true;if(!auto||(CFG.autoplay&&!RM()))v.play().catch(()=>{});if(b)b.textContent="Masquer la vidéo";}
+function vidFocus(li){document.querySelectorAll(".lesson .steps>li .svid").forEach(w=>{const l=w.closest("li");if(l!==li)vidToggle(l,false);});
+  if(li&&VIDS.has(vidId(li)))vidToggle(li,true,true);}
 function speakStep(li){const l=li.querySelector(".lead"),d=li.querySelector(".det");speak((l?l.textContent:"")+". … "+(d?d.innerText:""));}
 function speakCard(card){const c=card.cloneNode(true);c.querySelectorAll(".blank").forEach(b=>{if(!b.classList.contains("ok"))b.textContent=" … blanc … ";});c.querySelectorAll(".chip,button,.slot,li").forEach(x=>x.append(". "));c.querySelectorAll(".ch-say,.zsvg").forEach(x=>x.remove());speak(c.innerText);}
 function speak(text){try{const sp=window.speechSynthesis;if(!sp){toast("La lecture à voix haute n'est pas disponible dans ce navigateur.");return;}sp.cancel();
@@ -3320,7 +3338,7 @@ function initDone(){
         b.innerHTML=ICO("check");b.setAttribute("aria-pressed","false");
         b.addEventListener("click",e=>{e.stopPropagation();toggleStep(li,b);});
         const sy=document.createElement("button");sy.type="button";sy.className="ssay";sy.title="Écouter l'étape";sy.setAttribute("aria-label","Écouter l'étape");sy.textContent="🔊";sy.addEventListener("click",e=>{e.stopPropagation();speakStep(li);});
-        li.appendChild(b);li.appendChild(sy);
+        li.appendChild(b);li.appendChild(sy);vidBtn(li);
         if(SD[li.dataset.key]){li.classList.add("done");b.setAttribute("aria-pressed","true");}
       });
     });
@@ -3498,7 +3516,7 @@ function focusSync(){
   document.querySelectorAll(".lesson .fk,.lesson .fcur,.lesson .fshow").forEach(x=>x.classList.remove("fk","fcur","fshow"));
   document.querySelectorAll(".lesson .fend").forEach(x=>x.remove());
   const sec=current&&document.getElementById(current);
-  if(!document.body.classList.contains("focus")||!sec){dock.classList.remove("on");return;}
+  if(!document.body.classList.contains("focus")||!sec){dock.classList.remove("on");vidFocus(null);return;}
   const lis=lessonLis(sec);if(!lis.length){sec.classList.remove("fx");dock.classList.remove("on");return;}
   sec.classList.add("fx");dock.classList.add("on");
   let k=FIDX[sec.id];if(k==null||k<0||k>=lis.length)k=lis.findIndex(l=>!l.classList.contains("done"));
@@ -3514,7 +3532,7 @@ function focusSync(){
     dock.querySelector(".fd-prev").onclick=()=>{FIDX[sec.id]=lis.length-1;focusSync();window.scrollTo({top:0,behavior:"smooth"});};
     dock.querySelector(".fd-next").onclick=()=>{if(t.next){goNextLesson(sec.id);return;}rv.add(t.kind);focusSync();const el=t.kind==="cahier"?sec.querySelector(".cahier"):sec.querySelector(".defi-h");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
     dockH(dock);refocus(".fd-next");return;}
-  FIDX[sec.id]=k;const li=lis[k],ol=li.closest("ol");li.classList.add("fcur");
+  FIDX[sec.id]=k;const li=lis[k],ol=li.closest("ol");li.classList.add("fcur");vidFocus(li);
   let top=ol;while(top&&top.parentElement!==sec)top=top.parentElement;if(top)top.classList.add("fk");ol.classList.add("fk");partVis(top);
   const lead=li.querySelector(".lead"),keys=[...li.querySelectorAll("kbd,.menu")].filter(x=>!x.closest(".sdone")&&!x.parentElement.closest("kbd")).map(x=>x.outerHTML).join(" "),isDone=li.classList.contains("done"),hasDemo=(DMAP[sec.id]||[]).indexOf(k+1)>=0;
   const pn=partName(li);dock.innerHTML=`<div class="fd-info"><span class="fd-n">Étape ${k+1} / ${lis.length}${pn?" · "+pn:""}${isDone?" · déjà faite ✓":""}</span><span class="fd-t">${lead?lead.textContent:""}</span></div>${keys?`<div class="fd-keys" aria-label="Touches de l'étape">${keys}</div>`:""}<div class="fd-btns">${hasDemo?'<button type="button" class="btn-ghost fd-demo">▶ Voir le geste</button>':""}<button type="button" class="btn-ghost fd-say" aria-label="Écouter l'étape" title="Écouter l'étape">🔊</button><button type="button" class="btn-ghost fd-prev" aria-label="Étape précédente"${k===0?" disabled":""}>◀</button><button type="button" class="btn-go fd-done">${isDone?"Suivante ▶":"✓ C'est fait · suivante"}</button></div>`;
